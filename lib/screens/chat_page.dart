@@ -17,11 +17,21 @@ class _ChatPageState extends State<ChatPage> {
   final List<String> _availableModels = [];
   final List<ChatMessage> _messages = [];
   final TextEditingController _textController = TextEditingController();
+  ReceivePort? _inferencePort;
+  bool _isGenerating = false;
+  String _currentResponse = '';
 
   @override
   void initState() {
     super.initState();
     _loadAvailableModels();
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    _inferencePort?.close();
+    super.dispose();
   }
 
   @override
@@ -58,28 +68,71 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
-  void _handleSend() {
-    if (_textController.text.trim().isEmpty) return;
+  void _handleSend() async {
+    if (_textController.text.trim().isEmpty ||
+        _selectedModel == null ||
+        _isGenerating)
+      return;
 
+    final userMessage = _textController.text.trim();
     setState(() {
-      _messages.add(ChatMessage(text: _textController.text, isUser: true));
+      _messages.add(ChatMessage(text: userMessage, isUser: true));
       _textController.clear();
+      _isGenerating = true;
+      _currentResponse = '';
+      _messages.add(
+        ChatMessage(text: '', isUser: false),
+      ); // Placeholder for AI response
     });
 
-    // Simulate AI Response (In a real app, this would call ModelService.runInference)
-    Future.delayed(const Duration(seconds: 1), () {
+    try {
+      // Start inference with the selected model
+      _inferencePort = await ModelService.runInference(
+        _selectedModel!,
+        userMessage,
+        _onInferenceToken,
+      );
+    } catch (e) {
       if (mounted) {
         setState(() {
-          _messages.add(
-            ChatMessage(
-              text:
-                  "This is a transient response from $_selectedModel. Previous context is not stored to optimize token usage.",
-              isUser: false,
-            ),
+          _isGenerating = false;
+          // Replace placeholder with error message
+          _messages.last = ChatMessage(
+            text: 'Error: Failed to start inference. $e',
+            isUser: false,
           );
         });
       }
-    });
+    }
+  }
+
+  void _onInferenceToken(dynamic token) {
+    if (!mounted) return;
+
+    if (token == null) {
+      // Inference completed
+      setState(() {
+        _isGenerating = false;
+      });
+      _inferencePort?.close();
+      _inferencePort = null;
+    } else if (token is String) {
+      if (token.startsWith('Error:')) {
+        // Handle error
+        setState(() {
+          _isGenerating = false;
+          _messages.last = ChatMessage(text: token, isUser: false);
+        });
+        _inferencePort?.close();
+        _inferencePort = null;
+      } else {
+        // Append token to current response
+        setState(() {
+          _currentResponse += token;
+          _messages.last = ChatMessage(text: _currentResponse, isUser: false);
+        });
+      }
+    }
   }
 
   @override
@@ -141,7 +194,11 @@ class _ChatPageState extends State<ChatPage> {
                     },
                   ),
           ),
-          _ChatInputField(controller: _textController, onSend: _handleSend),
+          _ChatInputField(
+            controller: _textController,
+            onSend: _handleSend,
+            isGenerating: _isGenerating,
+          ),
           const SizedBox(height: 12),
           Center(
             child: Text(
@@ -225,8 +282,13 @@ class _WelcomeMessage extends StatelessWidget {
 class _ChatInputField extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onSend;
+  final bool isGenerating;
 
-  const _ChatInputField({required this.controller, required this.onSend});
+  const _ChatInputField({
+    required this.controller,
+    required this.onSend,
+    required this.isGenerating,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -302,12 +364,23 @@ class _ChatInputField extends StatelessWidget {
                         ],
                       ),
                       child: IconButton(
-                        icon: const Icon(
-                          Icons.send_rounded,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        onPressed: onSend,
+                        icon: isGenerating
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
+                            : const Icon(
+                                Icons.send_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                        onPressed: isGenerating ? null : onSend,
                       ),
                     ),
                   ),

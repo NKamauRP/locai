@@ -66,5 +66,13 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+
+	<!-- Permission descriptions -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>This app requires access to your local network to download and manage AI models</string>
+	<key>NSBonjourServiceTypes</key>
+	<array>
+		<string>_http._tcp</string>
+	</array>
 </dict>
 </plist>

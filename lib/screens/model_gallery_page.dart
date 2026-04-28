@@ -9,7 +9,7 @@ import '../theme/design_system.dart';
 import '../widgets/mesh_background.dart';
 import '../widgets/floating_nav_bar.dart';
 import '../widgets/glass_card.dart';
-import '../services/model_service.dart';
+import '../services/permission_manager.dart';
 
 class ModelGalleryPage extends StatefulWidget {
   const ModelGalleryPage({super.key});
@@ -80,16 +80,33 @@ class _ModelGalleryPageState extends State<ModelGalleryPage> {
 
   Future<void> _startDownload(String name, String url) async {
     if (_downloadedModels[name] == true) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("$name is already downloaded")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("$name is already downloaded")),
+      );
       return;
     }
 
-    final status = await Permission.storage.request();
+    // Request comprehensive storage permissions
+    final hasPermission = await PermissionManager.requestStoragePermission();
 
-    if (status.isGranted) {
-      final savedDir = await ModelService.localPath;
+    if (!hasPermission) {
+      // Try to open settings if permission was permanently denied
+      final openedSettings = await PermissionManager.openSettingsIfNeeded();
+
+      if (!openedSettings) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Storage permission is required to download models. Please enable it in app settings."),
+              duration: Duration(seconds: 5),
+            ),
+          );
+        }
+      }
+      return;
+    }
+
+    final savedDir = await ModelService.localPath;
 
       await FlutterDownloader.enqueue(
         url: url,
