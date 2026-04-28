@@ -10,6 +10,7 @@ import '../widgets/mesh_background.dart';
 import '../widgets/floating_nav_bar.dart';
 import '../widgets/glass_card.dart';
 import '../services/permission_manager.dart';
+import '../services/model_service.dart';
 
 class ModelGalleryPage extends StatefulWidget {
   const ModelGalleryPage({super.key});
@@ -80,9 +81,9 @@ class _ModelGalleryPageState extends State<ModelGalleryPage> {
 
   Future<void> _startDownload(String name, String url) async {
     if (_downloadedModels[name] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("$name is already downloaded")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("$name is already downloaded")));
       return;
     }
 
@@ -97,7 +98,9 @@ class _ModelGalleryPageState extends State<ModelGalleryPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("Storage permission is required to download models. Please enable it in app settings."),
+              content: Text(
+                "Storage permission is required to download models. Please enable it in app settings.",
+              ),
               duration: Duration(seconds: 5),
             ),
           );
@@ -108,22 +111,15 @@ class _ModelGalleryPageState extends State<ModelGalleryPage> {
 
     final savedDir = await ModelService.localPath;
 
-      await FlutterDownloader.enqueue(
-        url: url,
-        headers: {},
-        savedDir: savedDir,
-        showNotification: true,
-        openFileFromNotification: true,
-        saveInPublicStorage: true,
-        fileName: "$name.gguf",
-      );
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Storage permission denied")),
-        );
-      }
-    }
+    await FlutterDownloader.enqueue(
+      url: url,
+      headers: {},
+      savedDir: savedDir,
+      showNotification: true,
+      openFileFromNotification: true,
+      saveInPublicStorage: true,
+      fileName: "$name.gguf",
+    );
   }
 
   Future<void> _deleteModel(String name) async {

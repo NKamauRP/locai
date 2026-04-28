@@ -1,4 +1,6 @@
 import 'dart:ui';
+import 'dart:isolate';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../theme/design_system.dart';
 import '../widgets/mesh_background.dart';
@@ -31,12 +33,6 @@ class _ChatPageState extends State<ChatPage> {
   void dispose() {
     _textController.dispose();
     _inferencePort?.close();
-    super.dispose();
-  }
-
-  @override
-  void dispose() {
-    _textController.dispose();
     super.dispose();
   }
 

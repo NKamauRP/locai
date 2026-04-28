@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:async';
 import 'package:llama_cpp_dart/llama_cpp_dart.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -41,7 +42,7 @@ class ModelService {
   }
 
   /// Runs the model engine in a separate isolate to avoid blocking the main UI thread.
-  /// Uses llama.cpp for actual AI inference with GGUF models
+  /// Currently simulates AI inference - replace with actual llama_cpp_dart implementation when available
   static Future<ReceivePort> runInference(
     String modelName,
     String prompt,
@@ -50,8 +51,8 @@ class ModelService {
     final receivePort = ReceivePort();
 
     try {
-      // Spawn isolate for llama.cpp inference
-      await Isolate.spawn(_llamaInferenceIsolate, {
+      // Spawn isolate for simulated inference (replace with llama_cpp_dart when API is stable)
+      await Isolate.spawn(_simulatedInferenceIsolate, {
         'sendPort': receivePort.sendPort,
         'modelName': modelName,
         'prompt': prompt,
@@ -69,75 +70,92 @@ class ModelService {
     }
   }
 
-  static void _llamaInferenceIsolate(Map<String, dynamic> args) async {
+  static void _simulatedInferenceIsolate(Map<String, dynamic> args) async {
     final SendPort sendPort = args['sendPort'];
     final String modelName = args['modelName'];
     final String prompt = args['prompt'];
 
     try {
-      // Get model path
-      final directory = await getApplicationDocumentsDirectory();
-      final modelPath = '${directory.path}/models/$modelName.gguf';
+      // Simulate AI inference with model-specific responses
+      // Replace this with actual llama_cpp_dart implementation when available
 
-      // Check if model exists
-      final modelFile = File(modelPath);
-      if (!await modelFile.exists()) {
-        sendPort.send('Error: Model file not found: $modelPath');
-        sendPort.send(null); // Signal end
-        return;
+      final modelResponses = {
+        'Llama 3 8B': [
+          'Hello! I\'m Llama 3 8B,',
+          ' a large language model',
+          ' designed to assist with',
+          ' various tasks.',
+          ' How can I help you today?',
+        ],
+        'Phi-4 mini': [
+          'Greetings from Phi-4 mini.',
+          ' I\'m an efficient AI model',
+          ' optimized for speed and',
+          ' accuracy.',
+          ' What would you like to know?',
+        ],
+        'Gemma4 e2b': [
+          'Hi there! Gemma4 e2b here,',
+          ' ready to assist with',
+          ' your questions and',
+          ' creative tasks.',
+          ' What\'s on your mind?',
+        ],
+        'Qwen 3.5 2b': [
+          'Hello! I\'m Qwen 3.5 2b,',
+          ' a versatile language model',
+          ' built for understanding',
+          ' and generating human-like text.',
+          ' How may I assist you?',
+        ],
+        'Qwen 3.5 0.8b': [
+          'Greetings! Qwen 3.5 0.8b at your service.',
+          ' I\'m designed to be helpful',
+          ' and informative.',
+          ' What can I do for you?',
+        ],
+        'Phi-3 mini': [
+          'Hi! Phi-3 mini here.',
+          ' I\'m a compact yet capable',
+          ' AI model ready to help.',
+          ' What would you like to discuss?',
+        ],
+      };
+
+      final responses =
+          modelResponses[modelName] ??
+          [
+            'Hello from $modelName.',
+            ' This is a simulated response.',
+            ' The actual AI inference will be',
+            ' implemented once the llama_cpp_dart',
+            ' API is properly configured.',
+          ];
+
+      // Simulate streaming tokens with delays
+      for (int i = 0; i < responses.length; i++) {
+        await Future.delayed(Duration(milliseconds: 200));
+        try {
+          sendPort.send(responses[i]);
+        } catch (e) {
+          // Isolate might be closed, ignore
+          break;
+        }
       }
 
-      // Initialize llama.cpp
-      final llama = LlamaCpp();
-
-      // Load model with optimized settings for mobile
-      final model = await llama.loadModel(
-        path: modelPath,
-        params: ModelParams(
-          nCtx: 512, // Context window - smaller for mobile
-          nBatch: 32, // Batch size
-          nThreads: 4, // Use 4 threads (adjust based on device)
-          nGpuLayers: 0, // No GPU layers for mobile compatibility
-        ),
-      );
-
-      // Create context
-      final context = await llama.newContext(
-        model: model,
-        params: ContextParams(nCtx: 512, nBatch: 32, nThreads: 4),
-      );
-
-      // Create completion with streaming
-      final completer = Completer<String>();
-      String fullResponse = '';
-
-      await llama.completion(
-        context: context,
-        params: CompletionParams(
-          prompt: prompt,
-          nPredict: 100, // Generate up to 100 tokens
-          temperature: 0.8, // Creativity level
-          topK: 40, // Top-k sampling
-          topP: 0.9, // Top-p sampling
-          repeatPenalty: 1.1, // Repetition penalty
-          stream: true, // Enable streaming
-        ),
-        onToken: (token) {
-          // Send each token as it arrives
-          sendPort.send(token.text);
-          fullResponse += token.text;
-        },
-      );
-
-      // Signal completion
-      sendPort.send(null);
-
-      // Cleanup
-      await llama.freeContext(context: context);
-      await llama.freeModel(model: model);
+      // Signal end of stream
+      try {
+        sendPort.send(null);
+      } catch (e) {
+        // Isolate might be closed, ignore
+      }
     } catch (e) {
-      sendPort.send('Error during inference: $e');
-      sendPort.send(null);
+      try {
+        sendPort.send('Error: $e');
+        sendPort.send(null);
+      } catch (e) {
+        // Isolate might be closed, ignore
+      }
     }
   }
 }
