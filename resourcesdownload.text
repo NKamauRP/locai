@@ -1,0 +1,18 @@
+Add llamadart to your pubspec.yaml
+Configure Vulkan backend in hooks.yaml for android-arm64
+Store your .gguf files in the app's documents directory (download on first run from HuggingFace or bundle smaller ones in assets)
+Load and run with streaming — use StreamBuilder in Flutter to show tokens as they arrive
+
+so for the model gallery page here are the download links and model names: 
+Llama 3 8B Chat Instruct: https://huggingface.co/Qwen/Qwen2-Coder-1.5-8B-Instruct-GGUF/tree/main
+Phi-4 mini reasoning Q6: https://huggingface.co/lmstudio-community/Phi-4-mini-reasoning-GGUF/blob/main/Phi-4-mini-reasoning-Q6_K.gguf 
+Gemma4 e2b Q6k: https://huggingface.co/lmstudio-community/gemma-4-E2B-it-GGUF/blob/main/gemma-4-E2B-it-Q6_K.gguf
+Qwen 3.5 2b Q6_K: https://huggingface.co/lmstudio-community/Qwen3.5-2B-GGUF/blob/main/Qwen3.5-2B-Q6_K.gguf
+Qwen 3.5 0.8b Q6_K: https://huggingface.co/lmstudio-community/Qwen3.5-0.8B-GGUF/blob/main/Qwen3.5-0.8B-Q6_K.gguf
+phi-3-mini-4k-instruct-q4: https://huggingface.co/lmstudio-community/phi-3-mini-4k-instruct-q4/blob/main/phi-3-mini-4k-instruct-q4_0.gguf
+
+ensure that the download sessions of the app are persistent that is when the user exits the app the download session is not lost , and the user can resume the download session from where it left off and even continue when off the app screen.
+use this library : https://pub.dev/packages/flutter_downloader
+
+also add some form of notifications like when the download is completed or when the download is paused or when the download is resumed. and also when the download is cancelled.
+

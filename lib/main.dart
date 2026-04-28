@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_downloader/flutter_downloader.dart';
 import 'screens/chat_page.dart';
 import 'screens/conversation_history_page.dart';
 import 'screens/model_gallery_page.dart';
@@ -9,7 +10,15 @@ import 'screens/software_requirements_page.dart';
 import 'screens/security_settings_page.dart';
 import 'theme/design_system.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Plugin must be initialized before using
+  await FlutterDownloader.initialize(
+    debug: false, // Set to false for production; disable verbose logging
+    ignoreSsl: false, // Set to false for production; enable SSL verification
+  );
+
   runApp(const MainApp());
 }
 
@@ -61,17 +70,25 @@ class _AppShellState extends State<AppShell> {
           padding: EdgeInsets.zero,
           children: [
             const DrawerHeader(
-              decoration: BoxDecoration(
-                color: EtherealColors.primary,
+              decoration: BoxDecoration(color: EtherealColors.primary),
+              child: Text(
+                'Lumina AI',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              child: Text('Lumina AI', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
             ),
             ListTile(
               leading: const Icon(Icons.person_outline),
               title: const Text('Profile & Support'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileSupportPage()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProfileSupportPage()),
+                );
               },
             ),
             ListTile(
@@ -79,7 +96,12 @@ class _AppShellState extends State<AppShell> {
               title: const Text('Software Requirements'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const SoftwareRequirementsPage()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SoftwareRequirementsPage(),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -87,7 +109,12 @@ class _AppShellState extends State<AppShell> {
               title: const Text('Security & Settings'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const SecuritySettingsPage()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SecuritySettingsPage(),
+                  ),
+                );
               },
             ),
           ],
@@ -106,7 +133,10 @@ class _AppShellState extends State<AppShell> {
                 decoration: BoxDecoration(
                   color: EtherealColors.glassBase.withOpacity(0.6),
                   borderRadius: BorderRadius.circular(EtherealRadii.xl),
-                  border: Border.all(color: Colors.white.withOpacity(0.5), width: 1),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.5),
+                    width: 1,
+                  ),
                 ),
                 child: BottomNavigationBar(
                   currentIndex: _currentIndex,
@@ -119,10 +149,26 @@ class _AppShellState extends State<AppShell> {
                   showSelectedLabels: false,
                   showUnselectedLabels: false,
                   items: const [
-                    BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), activeIcon: Icon(Icons.chat_bubble), label: 'Chat'),
-                    BottomNavigationBarItem(icon: Icon(Icons.history), activeIcon: Icon(Icons.history_toggle_off), label: 'History'),
-                    BottomNavigationBarItem(icon: Icon(Icons.hub_outlined), activeIcon: Icon(Icons.hub), label: 'Models'),
-                    BottomNavigationBarItem(icon: Icon(Icons.info_outline), activeIcon: Icon(Icons.info), label: 'About'),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.chat_bubble_outline),
+                      activeIcon: Icon(Icons.chat_bubble),
+                      label: 'Chat',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.history),
+                      activeIcon: Icon(Icons.history_toggle_off),
+                      label: 'History',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.hub_outlined),
+                      activeIcon: Icon(Icons.hub),
+                      label: 'Models',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.info_outline),
+                      activeIcon: Icon(Icons.info),
+                      label: 'About',
+                    ),
                   ],
                 ),
               ),

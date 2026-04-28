@@ -101,6 +101,21 @@ class SecuritySettingsPage extends StatelessWidget {
                       ],
                     ),
                   ),
+                  const Text("AI MODEL PARAMETERS", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black54)),
+                  const SizedBox(height: 16),
+                  GlassCard(
+                    child: Column(
+                      children: [
+                        _buildParameterRow("Max Tokens", "2048", Icons.token_outlined),
+                        const SizedBox(height: 24),
+                        _buildParameterRow("Temperature", "0.7", Icons.thermostat_outlined),
+                        const SizedBox(height: 24),
+                        _buildParameterRow("Top K", "40", Icons.align_horizontal_left),
+                        const SizedBox(height: 24),
+                        _buildParameterRow("Top P", "0.95", Icons.filter_alt_outlined),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 32),
                   const Text("ACCESS METHODS", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black54)),
                   const SizedBox(height: 16),
@@ -199,6 +214,24 @@ class SecuritySettingsPage extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildParameterRow(String title, String value, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.blueGrey, size: 20),
+        const SizedBox(width: 16),
+        Expanded(child: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500))),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: EtherealColors.primary.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(EtherealRadii.sm),
+          ),
+          child: Text(value, style: const TextStyle(color: EtherealColors.primary, fontWeight: FontWeight.bold, fontSize: 13)),
+        ),
+      ],
     );
   }
 

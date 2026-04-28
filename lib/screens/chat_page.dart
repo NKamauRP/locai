@@ -3,9 +3,84 @@ import 'package:flutter/material.dart';
 import '../theme/design_system.dart';
 import '../widgets/mesh_background.dart';
 import '../widgets/floating_nav_bar.dart';
+import '../services/model_service.dart';
 
-class ChatPage extends StatelessWidget {
+class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
+
+  @override
+  State<ChatPage> createState() => _ChatPageState();
+}
+
+class _ChatPageState extends State<ChatPage> {
+  String? _selectedModel;
+  final List<String> _availableModels = [];
+  final List<ChatMessage> _messages = [];
+  final TextEditingController _textController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAvailableModels();
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadAvailableModels() async {
+    final models = [
+      "Llama 3 8B",
+      "Phi-4 mini",
+      "Gemma4 e2b",
+      "Qwen 3.5 2b",
+      "Qwen 3.5 0.8b",
+      "Phi-3 mini",
+    ];
+    for (var name in models) {
+      if (await ModelService.isModelDownloaded("$name.gguf")) {
+        _availableModels.add(name);
+      }
+    }
+    if (_availableModels.isNotEmpty) {
+      _selectedModel = _availableModels.first;
+    }
+    if (mounted) setState(() {});
+  }
+
+  void _handleModelChange(String? newModel) {
+    if (newModel == _selectedModel) return;
+    setState(() {
+      _selectedModel = newModel;
+      _messages.clear(); // Switch to a new chat
+    });
+  }
+
+  void _handleSend() {
+    if (_textController.text.trim().isEmpty) return;
+
+    setState(() {
+      _messages.add(ChatMessage(text: _textController.text, isUser: true));
+      _textController.clear();
+    });
+
+    // Simulate AI Response (In a real app, this would call ModelService.runInference)
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) {
+        setState(() {
+          _messages.add(
+            ChatMessage(
+              text:
+                  "This is a transient response from $_selectedModel. Previous context is not stored to optimize token usage.",
+              isUser: false,
+            ),
+          );
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,55 +96,74 @@ class ChatPage extends StatelessWidget {
               ),
             ),
             actions: [
-              const CircleAvatar(
-                radius: 14,
-                backgroundColor: EtherealColors.primaryContainer,
-                child: Icon(Icons.person, size: 18, color: EtherealColors.primary),
-              ),
+              if (_availableModels.isNotEmpty)
+                DropdownButton<String>(
+                  value: _selectedModel,
+                  items: _availableModels.map((model) {
+                    return DropdownMenuItem(
+                      value: model,
+                      child: Text(
+                        model,
+                        style: EtherealText.labelMd.copyWith(
+                          color: EtherealColors.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: _handleModelChange,
+                  underline: const SizedBox(),
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down,
+                    color: EtherealColors.primary,
+                    size: 18,
+                  ),
+                  dropdownColor: Colors.white.withOpacity(0.9),
+                ),
               const SizedBox(width: 8),
             ],
           ),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: EtherealSpacing.marginPage),
-              children: [
-                const SizedBox(height: 24),
-                const _WelcomeMessage(),
-                const SizedBox(height: 24),
-                const _AiMessage(
-                  text: "I've analyzed your request for the \"Ethereal Glass\" design system. The core concept revolves around optical density and light refraction rather than traditional shadows. Should we explore the color palette or the component library first?",
-                ),
-                const SizedBox(height: 24),
-                const _UserMessage(
-                  text: "Let's start with the component library. I want to see how a \"Glass Card\" looks with a nested image and a status indicator.",
-                ),
-                const SizedBox(height: 24),
-                const _AiImageMessage(),
-                const SizedBox(height: 8),
-                Padding(
-                  padding: const EdgeInsets.only(left: 12),
-                  child: Text(
-                    "LUMINA AI • 10:26 AM",
-                    style: EtherealText.labelMd.copyWith(color: EtherealColors.onSurfaceVariant.withOpacity(0.6), fontSize: 10),
+            child: _messages.isEmpty
+                ? const _WelcomeMessage()
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: EtherealSpacing.marginPage,
+                      vertical: 24,
+                    ),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      final msg = _messages[index];
+                      return ChatMessageBubble(
+                        isUser: msg.isUser,
+                        text: msg.text,
+                      );
+                    },
                   ),
-                ),
-                const SizedBox(height: 32),
-                Center(
-                  child: Text(
-                    "AI generated content may contain errors. Verify information\nfrom a professional.",
-                    textAlign: TextAlign.center,
-                    style: EtherealText.labelMd.copyWith(color: EtherealColors.onSurfaceVariant.withOpacity(0.6), fontSize: 10),
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
+          ),
+          _ChatInputField(controller: _textController, onSend: _handleSend),
+          const SizedBox(height: 12),
+          Center(
+            child: Text(
+              "AI generated content may contain errors. Verify information\nfrom a professional.",
+              textAlign: TextAlign.center,
+              style: EtherealText.labelMd.copyWith(
+                color: EtherealColors.onSurfaceVariant.withOpacity(0.6),
+                fontSize: 10,
+              ),
             ),
           ),
-          const _ChatInputField(),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
+}
+
+class ChatMessage {
+  final String text;
+  final bool isUser;
+  ChatMessage({required this.text, required this.isUser});
 }
 
 class _WelcomeMessage extends StatelessWidget {
@@ -86,10 +180,14 @@ class _WelcomeMessage extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.6),
-              border: Border.all(color: Colors.white.withOpacity(0.8), width: 1),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.8),
+                width: 1,
+              ),
               borderRadius: BorderRadius.circular(EtherealRadii.xl),
             ),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -97,236 +195,196 @@ class _WelcomeMessage extends StatelessWidget {
                     color: EtherealColors.primary.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.auto_awesome, color: EtherealColors.primary),
+                  child: const Icon(
+                    Icons.auto_awesome,
+                    color: EtherealColors.primary,
+                  ),
                 ),
                 const SizedBox(height: 16),
-                const Text("Good morning, Lumina User", style: EtherealText.bodyMd),
+                const Text(
+                  "Good morning, Lumina User",
+                  style: EtherealText.bodyMd,
+                ),
                 const SizedBox(height: 8),
                 Text(
                   "How can I assist your creative process\ntoday?",
                   textAlign: TextAlign.center,
-                  style: EtherealText.bodyMd.copyWith(color: EtherealColors.onSurfaceVariant),
+                  style: EtherealText.bodyMd.copyWith(
+                    color: EtherealColors.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _AiMessage extends StatelessWidget {
-  final String text;
-  const _AiMessage({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(EtherealRadii.xl),
-          topRight: Radius.circular(EtherealRadii.xl),
-          bottomRight: Radius.circular(EtherealRadii.xl),
-          bottomLeft: Radius.circular(EtherealRadii.sm),
-        ),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.7),
-              border: Border.all(color: Colors.white.withOpacity(0.8), width: 1),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(EtherealRadii.xl),
-                topRight: Radius.circular(EtherealRadii.xl),
-                bottomRight: Radius.circular(EtherealRadii.xl),
-                bottomLeft: Radius.circular(EtherealRadii.sm),
-              ),
-            ),
-            child: Text(text, style: EtherealText.bodyMd.copyWith(height: 1.5)),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AiImageMessage extends StatelessWidget {
-  const _AiImageMessage();
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(EtherealRadii.xl),
-          topRight: Radius.circular(EtherealRadii.xl),
-          bottomRight: Radius.circular(EtherealRadii.xl),
-          bottomLeft: Radius.circular(EtherealRadii.sm),
-        ),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.7),
-              border: Border.all(color: EtherealColors.primary.withOpacity(0.5), width: 1), // Blue border
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(EtherealRadii.xl),
-                topRight: Radius.circular(EtherealRadii.xl),
-                bottomRight: Radius.circular(EtherealRadii.xl),
-                bottomLeft: Radius.circular(EtherealRadii.sm),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("Absolutely. Here is a conceptual render of a Glass Card element. Notice the inner white border that catches light and the ambient glow.", style: EtherealText.bodyMd.copyWith(height: 1.5)),
-                const SizedBox(height: 16),
-                Stack(
-                  children: [
-                    Container(
-                      height: 140,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(EtherealRadii.md),
-                        gradient: LinearGradient(
-                          colors: [Colors.grey.shade300, Colors.grey.shade100],
-                        ),
-                      ),
-                      // Placeholder for image
-                    ),
-                    Positioned(
-                      bottom: 12,
-                      left: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.6),
-                          borderRadius: BorderRadius.circular(EtherealRadii.full),
-                          border: Border.all(color: Colors.white, width: 1),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(width: 6, height: 6, decoration: const BoxDecoration(color: EtherealColors.statusActive, shape: BoxShape.circle)),
-                            const SizedBox(width: 6),
-                            Text("ACTIVE STATE", style: EtherealText.labelMd.copyWith(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text("This uses a 20px blur with 40% opacity. Does this align with your vision for the serenity aesthetic?", style: EtherealText.bodyMd.copyWith(height: 1.5)),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _UserMessage extends StatelessWidget {
-  final String text;
-  const _UserMessage({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Container(
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: EtherealColors.primary,
-          boxShadow: [
-            BoxShadow(
-              color: EtherealColors.primaryContainer,
-              blurRadius: 15,
-              spreadRadius: -2,
-            ),
-          ],
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(EtherealRadii.xl),
-            topRight: Radius.circular(EtherealRadii.xl),
-            bottomLeft: Radius.circular(EtherealRadii.xl),
-            bottomRight: Radius.circular(EtherealRadii.sm),
-          ),
-        ),
-        child: Text(text, style: EtherealText.bodyMd.copyWith(color: EtherealColors.onPrimary, height: 1.5)),
       ),
     );
   }
 }
 
 class _ChatInputField extends StatelessWidget {
-  const _ChatInputField();
+  final TextEditingController controller;
+  final VoidCallback onSend;
+
+  const _ChatInputField({required this.controller, required this.onSend});
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.only(left: EtherealSpacing.marginPage, right: EtherealSpacing.marginPage, bottom: 0),
+        padding: const EdgeInsets.symmetric(
+          horizontal: EtherealSpacing.marginPage,
+        ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(EtherealRadii.full),
+          borderRadius: BorderRadius.circular(EtherealRadii.xl),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(EtherealRadii.full),
+                borderRadius: BorderRadius.circular(EtherealRadii.xl),
                 border: Border.all(color: Colors.white, width: 1),
               ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: EtherealColors.onSurfaceVariant.withOpacity(0.1),
-                      shape: BoxShape.circle,
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2.0),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: EtherealColors.onSurfaceVariant.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.add_photo_alternate_rounded,
+                        color: EtherealColors.onSurfaceVariant.withOpacity(0.8),
+                        size: 20,
+                      ),
                     ),
-                    child: Icon(Icons.add, color: EtherealColors.onSurfaceVariant.withOpacity(0.8), size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: TextField(
+                      controller: controller,
+                      maxLines: 4,
+                      minLines: 1,
                       style: EtherealText.bodyMd,
                       decoration: InputDecoration(
-                        hintText: "Type your message...",
-                        hintStyle: EtherealText.bodyMd.copyWith(color: EtherealColors.onSurfaceVariant.withOpacity(0.6)),
+                        hintText: "Ask anything or attach an image...",
+                        hintStyle: EtherealText.bodyMd.copyWith(
+                          color: EtherealColors.onSurfaceVariant.withOpacity(
+                            0.6,
+                          ),
+                        ),
                         border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 10,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Container(
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: EtherealColors.primary,
-                      boxShadow: [
-                        BoxShadow(
-                          color: EtherealColors.primaryContainer,
-                          blurRadius: 10,
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2.0),
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: EtherealColors.primary,
+                        boxShadow: [
+                          BoxShadow(
+                            color: EtherealColors.primaryContainer,
+                            blurRadius: 10,
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.send_rounded,
+                          color: Colors.white,
+                          size: 20,
                         ),
-                      ],
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.send_rounded, color: EtherealColors.onPrimary, size: 20),
-                      onPressed: () {},
+                        onPressed: onSend,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ChatMessageBubble extends StatelessWidget {
+  final bool isUser;
+  final String? text;
+  final Widget? attachment;
+
+  const ChatMessageBubble({
+    super.key,
+    required this.isUser,
+    this.text,
+    this.attachment,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.85,
+        ),
+        margin: const EdgeInsets.only(bottom: 24),
+        child: isUser ? _buildUserBubble(context) : _buildAiBubble(context),
+      ),
+    );
+  }
+
+  Widget _buildUserBubble(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: const BoxDecoration(
+        color: EtherealColors.primary,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(EtherealRadii.xl),
+          topRight: Radius.circular(EtherealRadii.xl),
+          bottomLeft: Radius.circular(EtherealRadii.xl),
+          bottomRight: Radius.circular(EtherealRadii.sm),
+        ),
+      ),
+      child: Text(
+        text ?? "",
+        style: EtherealText.bodyMd.copyWith(color: Colors.white, height: 1.5),
+      ),
+    );
+  }
+
+  Widget _buildAiBubble(BuildContext context) {
+    return ClipRRect(
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(EtherealRadii.xl),
+        topRight: Radius.circular(EtherealRadii.xl),
+        bottomRight: Radius.circular(EtherealRadii.xl),
+        bottomLeft: Radius.circular(EtherealRadii.sm),
+      ),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.7),
+            border: Border.all(color: Colors.white.withOpacity(0.8), width: 1),
+          ),
+          child: Text(
+            text ?? "",
+            style: EtherealText.bodyMd.copyWith(height: 1.5),
           ),
         ),
       ),
