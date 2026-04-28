@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:async';
-import 'package:llama_cpp_dart/llama_cpp_dart.dart';
 import 'package:path_provider/path_provider.dart';
 
 class ModelService {
